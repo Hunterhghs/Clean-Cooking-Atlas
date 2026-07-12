@@ -870,9 +870,10 @@ function handleCountryClick(event, d) {
 }
 
 function updateMapColors() {
-  if (!currentCountryPaths.length) return;
-  currentCountryPaths
-    .transition().duration(400)
+  if (!svg) return;
+  const paths = svg.selectAll("path.country");
+  if (paths.empty()) return;
+  paths.transition().duration(400)
     .attr("fill", d => getFillColor(d));
   updateLegend();
 }
