@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clean Cooking Atlas — H Heuristics</title>
+<meta name="description" content="Interactive multi-dimensional atlas of the global clean cooking transition. Country-level data on access, health, technology, investment, and policy. Built by H Heuristics.">
+<meta name="theme-color" content="#0a1018">
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://unpkg.com/topojson-client@3"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1"></script>
+<style>
+/* ═══════════════════════════════════════════════════════════
+   CLEAN COOKING ATLAS — H Heuristics
+   Multi-Panel Interactive Cartographic Atlas
+   Professional Grade · Dark Theme · Responsive
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  --bg-deep: #080e16;
+  --bg-panel: #0d1520;
+  --bg-card: #111b28;
+  --bg-card-alt: #152030;
+  --bg-hover: #1a2840;
+  --border: #1e2d3d;
+  --border-light: #263548;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #5e6f82;
+  --accent: #e8b430;
+  --accent-glow: rgba(232,180,48,0.2);
+  --red: #e0556a;
+  --orange: #e8923f;
+  --amber: #e8b430;
+  --teal: #3db8a0;
+  --green: #4caf84;
+  --blue: #5b9bd5;
+  --purple: #9b7ed8;
+  --cyan: #3dc8c0;
+  --header-h: 52px;
+  --left-w: 280px;
+  --right-w: 340px;
+  --radius: 8px;
+  --radius-sm: 5px;
+  --gap: 10px;
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: 'Georgia', 'Times New Roman', serif;
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; width:100%; overflow:hidden; background:var(--bg-deep); }
+body {
+  font-family: var(--font);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  display:flex; flex-direction:column;
+}
+
+/* ═══ HEADER ═══ */
+.header {
+  height: var(--header-h); min-height: var(--header-h);
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 16px; z-index:100;
+}
+.header-left { display:flex; align-items:center; gap:14px; }
+.header-logo {
+  font-family: var(--font-display);
+  font-size: 1rem; font-weight: 700; color: var(--accent);
+  letter-spacing: 0.03em; white-space:nowrap;
+}
+.header-logo span { color: var(--text-secondary); font-weight:400; font-size:0.78rem; margin-left:4px; }
+.header-divider { width:1px; height: 20px; background: var(--border); }
+.header-badge {
+  font-size:0.6rem; font-weight:600; text-transform:uppercase; letter-spacing: 0.08em;
+  background: rgba(232,180,48,0.12); color: var(--accent);
+  padding: 3px 10px; border-radius: 3px; border: 1px solid rgba(232,180,48,0.2);
+}
+.header-center { display:flex; align-items:center; gap:6px; }
+.header-right { display:flex; align-items:center; gap:16px; }
+.header-stat { text-align:right; }
+.header-stat .val { font-size:0.8rem; font-weight:700; color: var(--accent); font-family: var(--font-display); }
+.header-stat .lbl { font-size:0.55rem; color: var(--text-muted); text-transform:uppercase; letter-spacing:0.06em; }
+
+/* ═══ LAYER TOGGLES ═══ */
+.layer-toggles { display:flex; gap:3px; }
+.layer-btn {
+  background: transparent; border: 1px solid var(--border);
+  color: var(--text-muted); font-size:0.6rem; font-weight:600;
+  padding: 5px 10px; border-radius:4px; cursor:pointer;
+  text-transform:uppercase; letter-spacing:0.05em; transition: all 0.2s;
+  font-family: var(--font); white-space:nowrap;
+}
+.layer-btn:hover { border-color: var(--text-secondary); color: var(--text-secondary); }
+.layer-btn.active { background: rgba(232,180,48,0.12); border-color: var(--accent); color: var(--accent); }
+
+/* ═══ MAIN LAYOUT ═══ */
+.main {
+  flex:1; display:flex; overflow:hidden; position:relative;
+}
+
+/* ── LEFT PANEL ── */
+.left-panel {
+  width: var(--left-w); min-width: var(--left-w);
+  background: var(--bg-panel); border-right: 1px solid var(--border);
+  display:flex; flex-direction:column; overflow-y:auto; z-index:10;
+}
+.left-panel::-webkit-scrollbar { width:4px; }
+.left-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius:2px; }
+
+.panel-section { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.panel-section:last-child { border-bottom:none; }
+.panel-section h3 {
+  font-size:0.62rem; color: var(--text-muted); text-transform:uppercase;
+  letter-spacing:0.1em; margin-bottom:10px; font-weight:600;
+}
+.panel-section h2 {
+  font-size:0.85rem; color: var(--text-primary); font-weight:600;
+  margin-bottom:8px; font-family: var(--font-display); letter-spacing:0.02em;
+}
+
+.region-list { display:flex; flex-direction:column; gap:3px; }
+.region-item {
+  display:flex; align-items:center; justify-content:space-between;
+  padding: 8px 10px; border-radius: var(--radius-sm); cursor:pointer;
+  transition: all 0.15s; font-size:0.75rem; border: 1px solid transparent;
+}
+.region-item:hover { background: var(--bg-hover); }
+.region-item.active { background: var(--bg-card-alt); border-color: var(--accent); }
+.region-item .r-name { font-weight:500; }
+.region-item .r-stat { font-size:0.65rem; color: var(--text-muted); }
+.region-dot { width:8px; height:8px; border-radius:50%; margin-right:8px; flex-shrink:0; }
+
+.kpi-mini-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.kpi-mini {
+  background: var(--bg-card); border-radius: var(--radius-sm); padding:10px;
+  border: 1px solid var(--border);
+}
+.kpi-mini .km-val { font-size:0.9rem; font-weight:700; color: var(--text-primary); }
+.kpi-mini .km-lbl { font-size:0.55rem; color: var(--text-muted); margin-top:2px; text-transform:uppercase; letter-spacing:0.04em; }
+
+/* ── MAP CENTER ── */
+.map-container {
+  flex:1; position:relative; background: var(--bg-deep);
+  display:flex; align-items:center; justify-content:center;
+  overflow:hidden;
+}
+#map { width:100%; height:100%; }
+.map-legend {
+  position:absolute; bottom:20px; right:20px;
+  background: rgba(13,21,32,0.92); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding:10px 14px;
+  backdrop-filter: blur(8px); z-index:10;
+}
+.map-legend .leg-title {
+  font-size:0.58rem; color: var(--text-muted); text-transform:uppercase;
+  letter-spacing:0.08em; margin-bottom:6px; font-weight:600;
+}
+.leg-gradient {
+  height:10px; border-radius:3px; margin-bottom:6px;
+}
+.leg-labels { display:flex; justify-content:space-between; font-size:0.55rem; color: var(--text-muted); }
+.map-tooltip {
+  position:absolute; pointer-events:none; z-index:20;
+  background: rgba(8,14,22,0.95); border: 1px solid var(--accent);
+  border-radius: var(--radius-sm); padding:8px 12px;
+  font-size:0.7rem; opacity:0; transition: opacity 0.15s;
+  backdrop-filter: blur(8px); box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+}
+.map-tooltip .tt-name { font-weight:700; color: var(--accent); font-size:0.75rem; }
+.map-tooltip .tt-stat { color: var(--text-secondary); margin-top:3px; font-size:0.65rem; }
+
+.map-watermark {
+  position:absolute; bottom:12px; left:16px;
+  font-size:0.55rem; color: rgba(255,255,255,0.08);
+  pointer-events:none; z-index:5;
+}
+
+/* ── RIGHT PANEL ── */
+.right-panel {
+  width: var(--right-w); min-width: var(--right-w);
+  background: var(--bg-panel); border-left: 1px solid var(--border);
+  display:flex; flex-direction:column; overflow-y:auto; z-index:10;
+}
+.right-panel::-webkit-scrollbar { width:4px; }
+.right-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius:2px; }
+
+.detail-header {
+  padding:16px; border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(232,180,48,0.05) 0%, transparent 100%);
+}
+.detail-header h2 {
+  font-family: var(--font-display); font-size:1.1rem; font-weight:700;
+  color: var(--accent); margin-bottom:4px;
+}
+.detail-header .dh-sub { font-size:0.65rem; color: var(--text-muted); }
+
+.detail-section { padding:12px 16px; border-bottom: 1px solid var(--border); }
+.detail-section:last-child { border-bottom:none; }
+.detail-section h3 {
+  font-size:0.62rem; color: var(--text-muted); text-transform:uppercase;
+  letter-spacing:0.1em; margin-bottom:8px; font-weight:600;
+}
+
+.detail-stats { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.detail-stat {
+  background: var(--bg-card); border-radius: var(--radius-sm);
+  padding:10px; border: 1px solid var(--border);
+}
+.detail-stat .ds-val { font-size:0.85rem; font-weight:700; }
+.detail-stat .ds-lbl { font-size:0.55rem; color: var(--text-muted); margin-top:2px; text-transform:uppercase; letter-spacing:0.04em; }
+
+.detail-narrative {
+  font-size:0.72rem; color: var(--text-secondary); line-height:1.6;
+  font-style:italic;
+}
+
+.country-table { width:100%; border-collapse:collapse; font-size:0.68rem; }
+.country-table th {
+  text-align:left; color: var(--text-muted); font-size:0.55rem;
+  text-transform:uppercase; letter-spacing:0.06em; padding:6px 4px;
+  border-bottom: 1px solid var(--border); font-weight:600;
+}
+.country-table td {
+  padding:5px 4px; border-bottom: 1px solid rgba(30,45,61,0.5);
+  color: var(--text-secondary);
+}
+.country-table tr { cursor:pointer; transition: background 0.15s; }
+.country-table tr:hover { background: var(--bg-hover); }
+.country-table .ct-name { color: var(--text-primary); font-weight:500; }
+.country-table .ct-bar { 
+  display:inline-block; height:4px; border-radius:2px; margin-right:4px;
+  vertical-align:middle;
+}
+
+.chart-wrap { width:100%; height:160px; position:relative; }
+.chart-wrap.tall { height:200px; }
+
+.empty-state {
+  padding:40px 16px; text-align:center; color: var(--text-muted);
+  font-size:0.75rem;
+}
+.empty-state .es-icon { font-size:2rem; margin-bottom:8px; opacity:0.4; }
+
+/* ═══ RESPONSIVE ═══ */
+@media (max-width:1200px) {
+  .main { flex-direction:column; }
+  .left-panel { width:100%; min-width:unset; max-height:200px; flex-shrink:0; border-right:none; border-bottom:1px solid var(--border); }
+  .left-panel .panel-section { padding:8px 12px; }
+  .right-panel { width:100%; min-width:unset; max-height:300px; flex-shrink:0; border-left:none; border-top:1px solid var(--border); }
+  .map-container { flex:1; min-height:300px; }
+  .region-list { flex-direction:row; flex-wrap:wrap; gap:4px; }
+  .region-item { padding:4px 8px; font-size:0.68rem; }
+  .kpi-mini-grid { grid-template-columns: repeat(4, 1fr); }
+}
+@media (max-width:768px) {
+  :root { --header-h:44px; }
+  .header-center { display:none; }
+  .header-right { gap:8px; }
+  .header-logo { font-size:0.85rem; }
+  .kpi-mini-grid { grid-template-columns: repeat(2, 1fr); }
+  .detail-stats { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ HEADER ═══════════════ -->
+<header class="header">
+  <div class="header-left">
+    <div class="header-logo">Clean Cooking Atlas <span>by H Heuristics</span></div>
+    <div class="header-divider"></div>
+    <div class="header-badge">v1.0 · 2026</div>
+  </div>
+  <div class="header-center">
+    <div class="layer-toggles" id="layerToggles">
+      <button class="layer-btn active" data-layer="access">Access</button>
+      <button class="layer-btn" data-layer="health">Health</button>
+      <button class="layer-btn" data-layer="tech">Technology</button>
+      <button class="layer-btn" data-layer="investment">Investment</button>
+      <button class="layer-btn" data-layer="policy">Policy</button>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="header-stat"><div class="val" id="hdrWithout">2.1B</div><div class="lbl">Without Access</div></div>
+    <div class="header-stat"><div class="val" id="hdrDeaths">2.9M</div><div class="lbl">Annual Deaths</div></div>
+    <div class="header-stat"><div class="val" id="hdrInvest">$8B/yr</div><div class="lbl">Investment Need</div></div>
+  </div>
+</header>
+
+<!-- ═══════════════ MAIN LAYOUT ═══════════════ -->
+<div class="main">
+
+  <!-- LEFT PANEL: Regions + KPIs -->
+  <aside class="left-panel" id="leftPanel">
+    <div class="panel-section">
+      <h3>Regions</h3>
+      <div class="region-list" id="regionList"></div>
+    </div>
+    <div class="panel-section">
+      <h3>Global Snapshot</h3>
+      <div class="kpi-mini-grid" id="kpiGrid"></div>
+    </div>
+    <div class="panel-section" id="layerInfoSection">
+      <h2 id="layerInfoTitle">Clean Cooking Access</h2>
+      <p id="layerInfoDesc" style="font-size:0.68rem;color:var(--text-muted);line-height:1.5;">
+        Percentage of population with primary reliance on clean fuels and technologies for cooking.
+        Source: WHO Global Health Observatory, Tracking SDG 7.
+      </p>
+    </div>
+  </aside>
+
+  <!-- MAP CENTER -->
+  <div class="map-container" id="mapContainer">
+    <svg id="map"></svg>
+    <div class="map-legend" id="mapLegend">
+      <div class="leg-title" id="legTitle">Access Rate (%)</div>
+      <div class="leg-gradient" id="legGradient"></div>
+      <div class="leg-labels" id="legLabels"></div>
+    </div>
+    <div class="map-tooltip" id="mapTooltip">
+      <div class="tt-name"></div>
+      <div class="tt-stat"></div>
+    </div>
+    <div class="map-watermark">H Heuristics · Clean Cooking Atlas · 2026</div>
+  </div>
+
+  <!-- RIGHT PANEL: Deep Dive -->
+  <aside class="right-panel" id="rightPanel">
+    <div class="detail-header" id="detailHeader">
+      <h2 id="detailTitle">Select a country or region</h2>
+      <div class="dh-sub" id="detailSub">Click on the map to explore</div>
+    </div>
+    <div class="detail-section" id="detailStatsSection">
+      <h3>Key Metrics</h3>
+      <div class="detail-stats" id="detailStats"></div>
+    </div>
+    <div class="detail-section" id="detailChartSection">
+      <h3>Technology Mix</h3>
+      <div class="chart-wrap" id="techChartWrap"><canvas id="techChart"></canvas></div>
+    </div>
+    <div class="detail-section" id="detailNarrativeSection">
+      <h3>Context</h3>
+      <div class="detail-narrative" id="detailNarrative"></div>
+    </div>
+    <div class="detail-section" id="detailTableSection">
+      <h3>Top Countries</h3>
+      <table class="country-table" id="countryTable"><thead><tr><th>Country</th><th>Access</th><th>Without</th></tr></thead><tbody></tbody></table>
+    </div>
+  </aside>
+</div>
+
+<!-- ═══════════════ SCRIPTS ═══════════════ -->
+<script>
+// ═══════════════════════════════════════════════════════════
+// DATA: Enriched Country-Level Dataset
+// Sources: WHO GHO, IEA, SEforALL, CCA, World Bank/ESMAP
+// ═══════════════════════════════════════════════════════════
+
+const countryData = {
+  // ── SUB-SAHARAN AFRICA ──
+  "Angola": { access:52, pop:36.7, without:17.6, region:"Sub-Saharan Africa", hapDeaths:28000, primaryFuel:"Charcoal", investmentPerCap:1.2, policyStatus:"Developing", techMix:{biomass:48, charcoal:25, lpg:18, electric:7, other:2} },
+  "Benin": { access:10, pop:14.1, without:12.7, region:"Sub-Saharan Africa", hapDeaths:18000, primaryFuel:"Biomass", investmentPerCap:0.8, policyStatus:"Early", techMix:{biomass:90, charcoal:5, lpg:3, electric:1, other:1} },
+  "Botswana": { access:65, pop:2.7, without:0.9, region:"Sub-Saharan Africa", hapDeaths:400, primaryFuel:"LPG", investmentPerCap:3.5, policyStatus:"Established", techMix:{biomass:20, charcoal:15, lpg:40, electric:22, other:3} },
+  "Burkina Faso": { access:8, pop:23.8, without:21.9, region:"Sub-Saharan Africa", hapDeaths:32000, primaryFuel:"Biomass", investmentPerCap:0.4, policyStatus:"Early", techMix:{biomass:92, charcoal:4, lpg:2, electric:1, other:1} },
+  "Burundi": { access:2, pop:13.6, without:13.3, region:"Sub-Saharan Africa", hapDeaths:19000, primaryFuel:"Biomass", investmentPerCap:0.3, policyStatus:"Minimal", techMix:{biomass:98, charcoal:1, lpg:0, electric:0, other:1} },
+  "Cameroon": { access:22, pop:29.4, without:22.9, region:"Sub-Saharan Africa", hapDeaths:28000, primaryFuel:"Biomass", investmentPerCap:0.9, policyStatus:"Developing", techMix:{biomass:65, charcoal:13, lpg:15, electric:5, other:2} },
+  "Chad": { access:6, pop:18.8, without:17.7, region:"Sub-Saharan Africa", hapDeaths:26000, primaryFuel:"Biomass", investmentPerCap:0.2, policyStatus:"Minimal", techMix:{biomass:94, charcoal:3, lpg:1, electric:1, other:1} },
+  "Congo": { access:30, pop:6.3, without:4.4, region:"Sub-Saharan Africa", hapDeaths:3500, primaryFuel:"Charcoal", investmentPerCap:1.0, policyStatus:"Developing", techMix:{biomass:40, charcoal:30, lpg:18, electric:8, other:4} },
+  "Côte d'Ivoire": { access:32, pop:29.6, without:20.1, region:"Sub-Saharan Africa", hapDeaths:22000, primaryFuel:"Charcoal", investmentPerCap:1.4, policyStatus:"Developing", techMix:{biomass:38, charcoal:30, lpg:22, electric:7, other:3} },
+  "Dem. Rep. Congo": { access:4, pop:105.6, without:101.4, region:"Sub-Saharan Africa", hapDeaths:145000, primaryFuel:"Biomass", investmentPerCap:0.2, policyStatus:"Minimal", techMix:{biomass:96, charcoal:2, lpg:1, electric:0, other:1} },
+  "Ethiopia": { access:9, pop:129.7, without:118.0, region:"Sub-Saharan Africa", hapDeaths:155000, primaryFuel:"Biomass", investmentPerCap:0.5, policyStatus:"Developing", techMix:{biomass:88, charcoal:3, lpg:3, electric:5, other:1} },
+  "Ghana": { access:35, pop:34.8, without:22.6, region:"Sub-Saharan Africa", hapDeaths:18000, primaryFuel:"Charcoal", investmentPerCap:2.1, policyStatus:"Established", techMix:{biomass:30, charcoal:35, lpg:25, electric:7, other:3} },
+  "Kenya": { access:30, pop:56.2, without:39.3, region:"Sub-Saharan Africa", hapDeaths:32000, primaryFuel:"Charcoal", investmentPerCap:2.8, policyStatus:"Established", techMix:{biomass:35, charcoal:35, lpg:15, electric:12, other:3} },
+  "Madagascar": { access:4, pop:31.2, without:30.0, region:"Sub-Saharan Africa", hapDeaths:38000, primaryFuel:"Biomass", investmentPerCap:0.3, policyStatus:"Minimal", techMix:{biomass:94, charcoal:2, lpg:1, electric:2, other:1} },
+  "Malawi": { access:3, pop:21.4, without:20.8, region:"Sub-Saharan Africa", hapDeaths:28000, primaryFuel:"Biomass", investmentPerCap:0.4, policyStatus:"Early", techMix:{biomass:96, charcoal:1, lpg:1, electric:1, other:1} },
+  "Mali": { access:3, pop:24.0, without:23.3, region:"Sub-Saharan Africa", hapDeaths:32000, primaryFuel:"Biomass", investmentPerCap:0.3, policyStatus:"Minimal", techMix:{biomass:95, charcoal:2, lpg:1, electric:1, other:1} },
+  "Mozambique": { access:5, pop:34.9, without:33.2, region:"Sub-Saharan Africa", hapDeaths:42000, primaryFuel:"Biomass", investmentPerCap:0.6, policyStatus:"Early", techMix:{biomass:92, charcoal:3, lpg:2, electric:2, other:1} },
+  "Niger": { access:5, pop:28.2, without:26.8, region:"Sub-Saharan Africa", hapDeaths:38000, primaryFuel:"Biomass", investmentPerCap:0.2, policyStatus:"Minimal", techMix:{biomass:95, charcoal:2, lpg:1, electric:1, other:1} },
+  "Nigeria": { access:16, pop:227.9, without:191.4, region:"Sub-Saharan Africa", hapDeaths:195000, primaryFuel:"Biomass", investmentPerCap:0.7, policyStatus:"Developing", techMix:{biomass:55, charcoal:15, lpg:14, electric:8, other:8} },
+  "Rwanda": { access:20, pop:14.4, without:11.5, region:"Sub-Saharan Africa", hapDeaths:9000, primaryFuel:"Biomass", investmentPerCap:1.5, policyStatus:"Developing", techMix:{biomass:70, charcoal:10, lpg:8, electric:9, other:3} },
+  "Senegal": { access:46, pop:18.2, without:9.8, region:"Sub-Saharan Africa", hapDeaths:6500, primaryFuel:"LPG", investmentPerCap:2.3, policyStatus:"Established", techMix:{biomass:30, charcoal:12, lpg:42, electric:12, other:4} },
+  "Sierra Leone": { access:2, pop:8.9, without:8.7, region:"Sub-Saharan Africa", hapDeaths:12000, primaryFuel:"Biomass", investmentPerCap:0.5, policyStatus:"Minimal", techMix:{biomass:97, charcoal:1, lpg:1, electric:0, other:1} },
+  "Somalia": { access:4, pop:18.7, without:18.0, region:"Sub-Saharan Africa", hapDeaths:25000, primaryFuel:"Biomass", investmentPerCap:0.1, policyStatus:"Minimal", techMix:{biomass:96, charcoal:2, lpg:1, electric:0, other:1} },
+  "South Africa": { access:82, pop:60.4, without:10.9, region:"Sub-Saharan Africa", hapDeaths:4000, primaryFuel:"Electric", investmentPerCap:5.2, policyStatus:"Advanced", techMix:{biomass:10, charcoal:3, lpg:5, electric:75, other:7} },
+  "South Sudan": { access:1, pop:11.3, without:11.2, region:"Sub-Saharan Africa", hapDeaths:16000, primaryFuel:"Biomass", investmentPerCap:0.1, policyStatus:"Minimal", techMix:{biomass:99, charcoal:0, lpg:0, electric:0, other:1} },
+  "Sudan": { access:40, pop:49.4, without:29.6, region:"Sub-Saharan Africa", hapDeaths:28000, primaryFuel:"Charcoal", investmentPerCap:0.5, policyStatus:"Developing", techMix:{biomass:40, charcoal:20, lpg:22, electric:12, other:6} },
+  "Tanzania": { access:6, pop:69.4, without:65.2, region:"Sub-Saharan Africa", hapDeaths:68000, primaryFuel:"Biomass", investmentPerCap:0.6, policyStatus:"Developing", techMix:{biomass:88, charcoal:6, lpg:3, electric:2, other:1} },
+  "Uganda": { access:2, pop:50.0, without:49.0, region:"Sub-Saharan Africa", hapDeaths:55000, primaryFuel:"Biomass", investmentPerCap:0.5, policyStatus:"Early", techMix:{biomass:94, charcoal:3, lpg:1, electric:1, other:1} },
+  "Zambia": { access:18, pop:21.1, without:17.3, region:"Sub-Saharan Africa", hapDeaths:14000, primaryFuel:"Charcoal", investmentPerCap:0.8, policyStatus:"Developing", techMix:{biomass:48, charcoal:30, lpg:10, electric:9, other:3} },
+  "Zimbabwe": { access:32, pop:17.0, without:11.6, region:"Sub-Saharan Africa", hapDeaths:8000, primaryFuel:"Biomass", investmentPerCap:1.0, policyStatus:"Developing", techMix:{biomass:50, charcoal:15, lpg:12, electric:18, other:5} },
+  "Central African Rep.": { access:2, pop:5.9, without:5.8, region:"Sub-Saharan Africa", hapDeaths:8500, primaryFuel:"Biomass", investmentPerCap:0.2, policyStatus:"Minimal", techMix:{biomass:97, charcoal:1, lpg:1, electric:0, other:1} },
+  "Gabon": { access:80, pop:2.5, without:0.5, region:"Sub-Saharan Africa", hapDeaths:200, primaryFuel:"LPG", investmentPerCap:4.8, policyStatus:"Established", techMix:{biomass:8, charcoal:5, lpg:45, electric:35, other:7} },
+  "Guinea": { access:3, pop:14.5, without:14.1, region:"Sub-Saharan Africa", hapDeaths:20000, primaryFuel:"Biomass", investmentPerCap:0.4, policyStatus:"Minimal", techMix:{biomass:95, charcoal:2, lpg:1, electric:1, other:1} },
+  "Liberia": { access:3, pop:5.5, without:5.3, region:"Sub-Saharan Africa", hapDeaths:7500, primaryFuel:"Biomass", investmentPerCap:0.5, policyStatus:"Early", techMix:{biomass:94, charcoal:2, lpg:1, electric:2, other:1} },
+  "Mauritania": { access:48, pop:5.0, without:2.6, region:"Sub-Saharan Africa", hapDeaths:2200, primaryFuel:"Charcoal", investmentPerCap:1.5, policyStatus:"Developing", techMix:{biomass:25, charcoal:25, lpg:30, electric:15, other:5} },
+  "Namibia": { access:55, pop:2.6, without:1.2, region:"Sub-Saharan Africa", hapDeaths:500, primaryFuel:"LPG", investmentPerCap:4.5, policyStatus:"Established", techMix:{biomass:20, charcoal:10, lpg:35, electric:30, other:5} },
+  "Togo": { access:11, pop:9.3, without:8.3, region:"Sub-Saharan Africa", hapDeaths:11000, primaryFuel:"Biomass", investmentPerCap:0.9, policyStatus:"Developing", techMix:{biomass:75, charcoal:10, lpg:8, electric:5, other:2} },
+
+  // ── SOUTH ASIA ──
+  "Afghanistan": { access:24, pop:43.4, without:33.0, region:"South Asia", hapDeaths:52000, primaryFuel:"Biomass", investmentPerCap:0.3, policyStatus:"Minimal", techMix:{biomass:65, charcoal:5, lpg:6, electric:20, other:4} },
+  "Bangladesh": { access:28, pop:174.7, without:125.8, region:"South Asia", hapDeaths:155000, primaryFuel:"Biomass", investmentPerCap:1.2, policyStatus:"Developing", techMix:{biomass:55, charcoal:5, lpg:12, electric:24, other:4} },
+  "India": { access:65, pop:1441.7, without:504.6, region:"South Asia", hapDeaths:480000, primaryFuel:"LPG", investmentPerCap:2.5, policyStatus:"Advanced", techMix:{biomass:20, charcoal:2, lpg:43, electric:30, other:5} },
+  "Nepal": { access:35, pop:31.2, without:20.3, region:"South Asia", hapDeaths:17000, primaryFuel:"Biomass", investmentPerCap:1.0, policyStatus:"Developing", techMix:{biomass:45, charcoal:2, lpg:18, electric:30, other:5} },
+  "Pakistan": { access:48, pop:245.2, without:127.5, region:"South Asia", hapDeaths:150000, primaryFuel:"Biomass", investmentPerCap:1.5, policyStatus:"Developing", techMix:{biomass:40, charcoal:3, lpg:25, electric:22, other:10} },
+  "Sri Lanka": { access:62, pop:22.0, without:8.4, region:"South Asia", hapDeaths:5000, primaryFuel:"LPG", investmentPerCap:2.0, policyStatus:"Established", techMix:{biomass:25, charcoal:2, lpg:40, electric:28, other:5} },
+
+  // ── EAST ASIA & PACIFIC ──
+  "Cambodia": { access:26, pop:17.1, without:12.7, region:"East Asia & Pacific", hapDeaths:9000, primaryFuel:"Biomass", investmentPerCap:0.7, policyStatus:"Early", techMix:{biomass:60, charcoal:10, lpg:10, electric:15, other:5} },
+  "China": { access:84, pop:1410.8, without:225.7, region:"East Asia & Pacific", hapDeaths:420000, primaryFuel:"Electric", investmentPerCap:4.8, policyStatus:"Advanced", techMix:{biomass:10, charcoal:1, lpg:5, electric:75, other:9} },
+  "Indonesia": { access:72, pop:279.8, without:78.3, region:"East Asia & Pacific", hapDeaths:68000, primaryFuel:"LPG", investmentPerCap:2.2, policyStatus:"Established", techMix:{biomass:20, charcoal:3, lpg:35, electric:35, other:7} },
+  "Laos": { access:8, pop:7.7, without:7.1, region:"East Asia & Pacific", hapDeaths:5500, primaryFuel:"Biomass", investmentPerCap:0.5, policyStatus:"Early", techMix:{biomass:88, charcoal:4, lpg:2, electric:4, other:2} },
+  "Malaysia": { access:96, pop:34.7, without:1.4, region:"East Asia & Pacific", hapDeaths:800, primaryFuel:"LPG", investmentPerCap:3.8, policyStatus:"Advanced", techMix:{biomass:2, charcoal:1, lpg:45, electric:48, other:4} },
+  "Myanmar": { access:22, pop:55.0, without:42.9, region:"East Asia & Pacific", hapDeaths:38000, primaryFuel:"Biomass", investmentPerCap:0.4, policyStatus:"Developing", techMix:{biomass:70, charcoal:5, lpg:5, electric:15, other:5} },
+  "North Korea": { access:18, pop:26.2, without:21.5, region:"East Asia & Pacific", hapDeaths:28000, primaryFuel:"Biomass", investmentPerCap:0.1, policyStatus:"Minimal", techMix:{biomass:70, charcoal:5, lpg:5, electric:12, other:8} },
+  "Philippines": { access:52, pop:119.1, without:57.2, region:"East Asia & Pacific", hapDeaths:38000, primaryFuel:"LPG", investmentPerCap:1.1, policyStatus:"Developing", techMix:{biomass:35, charcoal:5, lpg:25, electric:28, other:7} },
+  "Thailand": { access:78, pop:71.9, without:15.8, region:"East Asia & Pacific", hapDeaths:12000, primaryFuel:"LPG", investmentPerCap:2.8, policyStatus:"Established", techMix:{biomass:15, charcoal:3, lpg:35, electric:40, other:7} },
+  "Vietnam": { access:60, pop:100.3, without:40.1, region:"East Asia & Pacific", hapDeaths:28000, primaryFuel:"LPG", investmentPerCap:1.6, policyStatus:"Developing", techMix:{biomass:30, charcoal:5, lpg:25, electric:30, other:10} },
+
+  // ── MIDDLE EAST & NORTH AFRICA ──
+  "Algeria": { access:97, pop:46.2, without:1.4, region:"Middle East & N. Africa", hapDeaths:800, primaryFuel:"LPG", investmentPerCap:4.5, policyStatus:"Advanced", techMix:{biomass:1, charcoal:0, lpg:60, electric:35, other:4} },
+  "Egypt": { access:98, pop:114.5, without:2.3, region:"Middle East & N. Africa", hapDeaths:1500, primaryFuel:"LPG", investmentPerCap:3.2, policyStatus:"Advanced", techMix:{biomass:1, charcoal:0, lpg:55, electric:40, other:4} },
+  "Iran": { access:98, pop:89.8, without:1.8, region:"Middle East & N. Africa", hapDeaths:1200, primaryFuel:"LPG", investmentPerCap:3.0, policyStatus:"Advanced", techMix:{biomass:1, charcoal:0, lpg:58, electric:37, other:4} },
+  "Iraq": { access:96, pop:46.5, without:1.9, region:"Middle East & N. Africa", hapDeaths:1000, primaryFuel:"LPG", investmentPerCap:1.8, policyStatus:"Established", techMix:{biomass:2, charcoal:1, lpg:55, electric:35, other:7} },
+  "Morocco": { access:97, pop:38.2, without:1.1, region:"Middle East & N. Africa", hapDeaths:600, primaryFuel:"LPG", investmentPerCap:4.0, policyStatus:"Advanced", techMix:{biomass:2, charcoal:0, lpg:52, electric:40, other:6} },
+  "Yemen": { access:65, pop:35.2, without:12.3, region:"Middle East & N. Africa", hapDeaths:12000, primaryFuel:"LPG", investmentPerCap:0.5, policyStatus:"Developing", techMix:{biomass:15, charcoal:5, lpg:40, electric:25, other:15} },
+
+  // ── LATIN AMERICA & CARIBBEAN ──
+  "Argentina": { access:98, pop:46.1, without:0.9, region:"Latin America & Carib.", hapDeaths:400, primaryFuel:"LPG", investmentPerCap:5.0, policyStatus:"Advanced", techMix:{biomass:1, charcoal:0, lpg:50, electric:45, other:4} },
+  "Bolivia": { access:78, pop:12.6, without:2.8, region:"Latin America & Carib.", hapDeaths:2500, primaryFuel:"LPG", investmentPerCap:1.8, policyStatus:"Established", techMix:{biomass:15, charcoal:2, lpg:40, electric:35, other:8} },
+  "Brazil": { access:96, pop:217.6, without:8.7, region:"Latin America & Carib.", hapDeaths:5000, primaryFuel:"LPG", investmentPerCap:4.2, policyStatus:"Advanced", techMix:{biomass:3, charcoal:1, lpg:45, electric:45, other:6} },
+  "Colombia": { access:92, pop:52.3, without:4.2, region:"Latin America & Carib.", hapDeaths:3000, primaryFuel:"LPG", investmentPerCap:3.5, policyStatus:"Advanced", techMix:{biomass:5, charcoal:1, lpg:42, electric:44, other:8} },
+  "Guatemala": { access:48, pop:18.4, without:9.6, region:"Latin America & Carib.", hapDeaths:9000, primaryFuel:"Biomass", investmentPerCap:1.0, policyStatus:"Developing", techMix:{biomass:48, charcoal:2, lpg:20, electric:25, other:5} },
+  "Haiti": { access:8, pop:11.9, without:11.0, region:"Latin America & Carib.", hapDeaths:14000, primaryFuel:"Biomass", investmentPerCap:0.3, policyStatus:"Minimal", techMix:{biomass:90, charcoal:7, lpg:1, electric:1, other:1} },
+  "Mexico": { access:86, pop:129.4, without:18.1, region:"Latin America & Carib.", hapDeaths:10000, primaryFuel:"LPG", investmentPerCap:3.8, policyStatus:"Advanced", techMix:{biomass:10, charcoal:1, lpg:42, electric:38, other:9} },
+  "Peru": { access:76, pop:34.7, without:8.3, region:"Latin America & Carib.", hapDeaths:5500, primaryFuel:"LPG", investmentPerCap:2.5, policyStatus:"Established", techMix:{biomass:18, charcoal:2, lpg:35, electric:35, other:10} },
+  "Venezuela": { access:94, pop:29.4, without:1.8, region:"Latin America & Carib.", hapDeaths:1000, primaryFuel:"LPG", investmentPerCap:1.2, policyStatus:"Established", techMix:{biomass:2, charcoal:1, lpg:50, electric:40, other:7} },
+
+  // ── EUROPE & CENTRAL ASIA ──
+  "Albania": { access:80, pop:2.8, without:0.6, region:"Europe & Central Asia", hapDeaths:300, primaryFuel:"Electric", investmentPerCap:3.5, policyStatus:"Established", techMix:{biomass:15, charcoal:1, lpg:10, electric:65, other:9} },
+  "Kazakhstan": { access:92, pop:19.8, without:1.6, region:"Europe & Central Asia", hapDeaths:800, primaryFuel:"LPG", investmentPerCap:4.5, policyStatus:"Advanced", techMix:{biomass:5, charcoal:1, lpg:35, electric:48, other:11} },
+  "Kyrgyzstan": { access:65, pop:6.8, without:2.4, region:"Europe & Central Asia", hapDeaths:2000, primaryFuel:"Biomass", investmentPerCap:1.2, policyStatus:"Developing", techMix:{biomass:25, charcoal:5, lpg:15, electric:40, other:15} },
+  "Russia": { access:94, pop:144.4, without:8.7, region:"Europe & Central Asia", hapDeaths:5000, primaryFuel:"LPG", investmentPerCap:5.5, policyStatus:"Advanced", techMix:{biomass:4, charcoal:0, lpg:30, electric:55, other:11} },
+  "Tajikistan": { access:58, pop:10.4, without:4.4, region:"Europe & Central Asia", hapDeaths:3500, primaryFuel:"Biomass", investmentPerCap:0.8, policyStatus:"Developing", techMix:{biomass:35, charcoal:3, lpg:10, electric:40, other:12} },
+  "Ukraine": { access:95, pop:37.7, without:1.9, region:"Europe & Central Asia", hapDeaths:1000, primaryFuel:"LPG", investmentPerCap:4.0, policyStatus:"Advanced", techMix:{biomass:3, charcoal:0, lpg:30, electric:55, other:12} },
+  "Uzbekistan": { access:85, pop:35.6, without:5.3, region:"Europe & Central Asia", hapDeaths:3000, primaryFuel:"LPG", investmentPerCap:2.8, policyStatus:"Established", techMix:{biomass:10, charcoal:2, lpg:30, electric:45, other:13} },
+
+  // ── NORTH AMERICA ──
+  "Canada": { access:100, pop:39.1, without:0, region:"North America", hapDeaths:0, primaryFuel:"Electric", investmentPerCap:8.0, policyStatus:"Advanced", techMix:{biomass:0, charcoal:0, lpg:3, electric:85, other:12} },
+  "United States": { access:100, pop:336.8, without:0, region:"North America", hapDeaths:0, primaryFuel:"Electric", investmentPerCap:7.5, policyStatus:"Advanced", techMix:{biomass:0, charcoal:0, lpg:5, electric:80, other:15} },
+
+  // ── Developed (not individually mapped) ──
+  "Australia": { access:100, pop:26.7, without:0, region:"East Asia & Pacific", hapDeaths:0, primaryFuel:"Electric", investmentPerCap:7.0, policyStatus:"Advanced", techMix:{biomass:0, charcoal:0, lpg:2, electric:85, other:13} },
+  "Japan": { access:100, pop:123.8, without:0, region:"East Asia & Pacific", hapDeaths:0, primaryFuel:"Electric", investmentPerCap:6.5, policyStatus:"Advanced", techMix:{biomass:0, charcoal:0, lpg:2, electric:88, other:10} },
+  "South Korea": { access:100, pop:51.7, without:0, region:"East Asia & Pacific", hapDeaths:0, primaryFuel:"Electric", investmentPerCap:6.8, policyStatus:"Advanced", techMix:{biomass:0, charcoal:0, lpg:2, electric:86, other:12} },
+  "Germany": { access:100, pop:83.3, without:0, region:"Europe & Central Asia", hapDeaths:0, primaryFuel:"Electric", investmentPerCap:7.2, policyStatus:"Advanced", techMix:{biomass:0, charcoal:0, lpg:1, electric:88, other:11} },
+  "France": { access:100, pop:64.9, without:0, region:"Europe & Central Asia", hapDeaths:0, primaryFuel:"Electric", investmentPerCap:7.0, policyStatus:"Advanced", techMix:{biomass:0, charcoal:0, lpg:1, electric:86, other:13} },
+  "United Kingdom": { access:100, pop:67.9, without:0, region:"Europe & Central Asia", hapDeaths:0, primaryFuel:"Electric", investmentPerCap:6.8, policyStatus:"Advanced", techMix:{biomass:0, charcoal:0, lpg:2, electric:85, other:13} },
+};
+
+// Regional aggregates
+const regionAgg = {
+  "Sub-Saharan Africa": { access:20, without:980, pop:1250, hapDeaths:980000, primaryFuel:"Biomass", investmentPerCap:1.1, policyAvg:"Developing", color:"#e0556a", narrative:"Sub-Saharan Africa faces the most severe clean cooking access deficit. With only 20% access, 980 million people rely on biomass and charcoal. The crisis is deepening: population growth outpaces electrification and LPG distribution. Nigeria, Ethiopia, DRC, and Tanzania alone account for over half the region's access gap. Yet momentum is building — Kenya's carbon finance and Ghana's LPG programs show what's possible." },
+  "South Asia": { access:55, without:820, pop:1960, hapDeaths:860000, primaryFuel:"Biomass/LPG", investmentPerCap:2.1, policyAvg:"Developing", color:"#e8923f", narrative:"South Asia is home to 820 million without clean cooking — led by India (505M) and Pakistan (128M). India's PMUY program has distributed 100M+ LPG connections, but sustained usage remains a challenge due to affordability and biomass availability. Bangladesh and Nepal are emerging bright spots, with electric cooking gaining traction in mini-grid and solar home system markets." },
+  "East Asia & Pacific": { access:79, without:485, pop:2380, hapDeaths:650000, primaryFuel:"Mixed", investmentPerCap:3.2, policyAvg:"Developing", color:"#e8b430", narrative:"China dominates the regional picture, having achieved 84% clean cooking access through aggressive rural electrification and LPG distribution. Indonesia's kerosene-to-LPG conversion (50M+ households) is a global success story. However, Southeast Asia's poorest — Myanmar, Cambodia, Laos — remain at 8-26% access, highlighting the intra-regional divide." },
+  "Middle East & N. Africa": { access:93, without:25, pop:510, hapDeaths:22000, primaryFuel:"LPG", investmentPerCap:3.9, policyAvg:"Advanced", color:"#3db8a0", narrative:"The MENA region has achieved near-universal clean cooking access (93%), driven by widespread LPG infrastructure and high urbanization. Yemen is the stark exception at 65% access, reflecting the devastating impact of conflict on basic infrastructure. The region's lesson: LPG subsidies + urban grid access = rapid transition." },
+  "Latin America & Carib.": { access:85, without:70, pop:665, hapDeaths:52000, primaryFuel:"LPG", investmentPerCap:3.6, policyAvg:"Established", color:"#5b9bd5", narrative:"Latin America has made strong progress (85% access), led by Brazil's universal LPG program and Mexico's rural electrification. Guatemala and Haiti are the region's outliers at 48% and 8% access respectively. The region's challenge is the 'last mile' — remote Andean and Amazonian communities where biomass remains the only practical option." },
+  "Europe & Central Asia": { access:97, without:25, pop:930, hapDeaths:15000, primaryFuel:"Electric/LPG", investmentPerCap:5.8, policyAvg:"Advanced", color:"#4caf84", narrative:"Europe has achieved universal clean cooking. Central Asia's transition is well underway (92%+ in Kazakhstan, 85% in Uzbekistan) but Kyrgyzstan and Tajikistan lag at 58-65%, with biomass still dominant in rural mountain communities. The Central Asian challenge is infrastructure cost in sparse, mountainous terrain." },
+  "North America": { access:100, without:0, pop:376, hapDeaths:0, primaryFuel:"Electric", investmentPerCap:7.8, policyAvg:"Advanced", color:"#9b7ed8", narrative:"Universal clean cooking access achieved. The North American clean cooking challenge is now about climate: reducing natural gas cooking's methane leakage and accelerating the induction transition for its efficiency and indoor air quality benefits." },
+};
+
+// ═══════════════════════════════════════════════════════════
+// MAP LAYER CONFIGURATIONS
+// ═══════════════════════════════════════════════════════════
+
+const layerConfig = {
+  access: {
+    title: "Clean Cooking Access Rate",
+    unit: "% of population",
+    description: "Percentage of population with primary reliance on clean fuels and technologies for cooking. Source: WHO Global Health Observatory, Tracking SDG 7.",
+    getValue: d => d.access,
+    domain: [0, 100],
+    colorScale: d3.interpolateRgbBasis(["#c0392b","#e0556a","#e8923f","#e8b430","#3db8a0","#4caf84","#27ae60"]),
+    legendLabels: ["0%","20%","40%","60%","80%","100%"],
+    gradientCss: "linear-gradient(90deg, #c0392b, #e0556a, #e8923f, #e8b430, #3db8a0, #4caf84, #27ae60)",
+    format: v => v + "%",
+  },
+  health: {
+    title: "HAP Deaths per 100,000",
+    unit: "deaths/100k/year",
+    description: "Estimated annual deaths from household air pollution per 100,000 population. Includes IHD, stroke, LRI, COPD, and lung cancer attributable to HAP. Source: WHO, Lancet Countdown.",
+    getValue: d => d.pop > 0 ? (d.hapDeaths / (d.pop * 10000)) : 0,
+    domain: [0, 200],
+    colorScale: d3.interpolateRgbBasis(["#f7fcf0","#e0f3db","#ccebc5","#a8ddb5","#7bccc4","#4eb3d3","#2b8cbe","#0868ac","#084081"]),
+    legendLabels: ["0","30","60","90","120","150+"],
+    gradientCss: "linear-gradient(90deg, #f7fcf0, #a8ddb5, #4eb3d3, #0868ac, #084081)",
+    format: v => v.toFixed(0),
+  },
+  tech: {
+    title: "Primary Cooking Fuel",
+    unit: "dominant technology",
+    description: "Dominant cooking fuel/technology by country. Categories: Biomass (wood, dung, crop waste), Charcoal, LPG, and Electric (including induction). Source: WHO, IEA, CCA.",
+    getValue: d => d.primaryFuel,
+    domain: ["Biomass","Charcoal","LPG","Electric"],
+    colorScale: d => ({ "Biomass":"#c0392b", "Charcoal":"#e67e22", "LPG":"#3db8a0", "Electric":"#4caf84" }[d] || "#666"),
+    legendLabels: ["Biomass","Charcoal","LPG","Electric"],
+    gradientCss: null,
+    format: v => v,
+    categorical: true,
+  },
+  investment: {
+    title: "Investment per Capita",
+    unit: "$/person/year",
+    description: "Estimated annual clean cooking investment per capita (USD). Includes public, private, multilateral, and carbon finance flows. Source: IEA, CCA, World Bank/ESMAP.",
+    getValue: d => d.investmentPerCap,
+    domain: [0, 8],
+    colorScale: d3.interpolateRgbBasis(["#c0392b","#e8923f","#e8b430","#3db8a0","#4caf84"]),
+    legendLabels: ["$0","$2","$4","$6","$8+"],
+    gradientCss: "linear-gradient(90deg, #c0392b, #e8923f, #e8b430, #3db8a0, #4caf84)",
+    format: v => "$" + v.toFixed(1),
+  },
+  policy: {
+    title: "Policy & Institutional Readiness",
+    unit: "status",
+    description: "Assessment of national clean cooking policy framework, institutional capacity, and implementation progress. Categories: Minimal (no formal policy), Early (policy under development), Developing (policy adopted, early implementation), Established (functioning programs), Advanced (mature ecosystem). Source: CCA, IEA, WHO.",
+    getValue: d => d.policyStatus,
+    domain: ["Minimal","Early","Developing","Established","Advanced"],
+    colorScale: d => ({ "Minimal":"#8b0000", "Early":"#c0392b", "Developing":"#e8923f", "Established":"#3db8a0", "Advanced":"#27ae60" }[d] || "#666"),
+    legendLabels: ["Minimal","Early","Developing","Established","Advanced"],
+    gradientCss: null,
+    format: v => v,
+    categorical: true,
+  },
+};
+
+let currentLayer = "access";
+let activeRegion = null;
+let activeCountry = null;
+
+// ═══════════════════════════════════════════════════════════
+// MAP: TopoJSON name → data key mapping
+// ═══════════════════════════════════════════════════════════
+
+const topoNameMap = {
+  "Angola":"Angola","Benin":"Benin","Botswana":"Botswana","Burkina Faso":"Burkina Faso","Burundi":"Burundi",
+  "Cameroon":"Cameroon","Central African Rep.":"Central African Rep.","Chad":"Chad","Congo":"Congo",
+  "Côte d'Ivoire":"Côte d'Ivoire","Dem. Rep. Congo":"Dem. Rep. Congo","Ethiopia":"Ethiopia",
+  "Gabon":"Gabon","Ghana":"Ghana","Guinea":"Guinea","Kenya":"Kenya","Liberia":"Liberia",
+  "Madagascar":"Madagascar","Malawi":"Malawi","Mali":"Mali","Mauritania":"Mauritania",
+  "Mozambique":"Mozambique","Namibia":"Namibia","Niger":"Niger","Nigeria":"Nigeria","Rwanda":"Rwanda",
+  "Senegal":"Senegal","Sierra Leone":"Sierra Leone","Somalia":"Somalia","South Africa":"South Africa",
+  "South Sudan":"South Sudan","Sudan":"Sudan","Tanzania":"Tanzania","Togo":"Togo","Uganda":"Uganda",
+  "Zambia":"Zambia","Zimbabwe":"Zimbabwe",
+  "Afghanistan":"Afghanistan","Bangladesh":"Bangladesh","India":"India","Nepal":"Nepal","Pakistan":"Pakistan",
+  "Sri Lanka":"Sri Lanka",
+  "Cambodia":"Cambodia","China":"China","Indonesia":"Indonesia","Laos":"Laos","Malaysia":"Malaysia",
+  "Myanmar":"Myanmar","Philippines":"Philippines","Thailand":"Thailand","Vietnam":"Vietnam",
+  "Australia":"Australia","Japan":"Japan","South Korea":"South Korea","North Korea":"North Korea",
+  "Algeria":"Algeria","Egypt":"Egypt","Iran":"Iran","Iraq":"Iraq","Morocco":"Morocco","Yemen":"Yemen",
+  "Argentina":"Argentina","Bolivia":"Bolivia","Brazil":"Brazil","Colombia":"Colombia",
+  "Guatemala":"Guatemala","Haiti":"Haiti","Mexico":"Mexico","Peru":"Peru","Venezuela":"Venezuela",
+  "Albania":"Albania","Kazakhstan":"Kazakhstan","Kyrgyzstan":"Kyrgyzstan","Russia":"Russia",
+  "Tajikistan":"Tajikistan","Ukraine":"Ukraine","Uzbekistan":"Uzbekistan",
+  "France":"France","Germany":"Germany","United Kingdom":"United Kingdom",
+  "Canada":"Canada","United States of America":"United States",
+};
+
+// Get data key from TopoJSON name
+function getDataKey(topoName) {
+  if (topoNameMap[topoName]) return topoNameMap[topoName];
+  const fuzzy = Object.keys(countryData).find(k => topoName && topoName.toLowerCase().includes(k.toLowerCase()));
+  return fuzzy || null;
+}
+
+// ═══════════════════════════════════════════════════════════
+// INIT: Build left panel
+// ═══════════════════════════════════════════════════════════
+
+function buildLeftPanel() {
+  const regionList = document.getElementById("regionList");
+  const kpiGrid = document.getElementById("kpiGrid");
+
+  // Region list
+  const regions = Object.keys(regionAgg);
+  regionList.innerHTML = regions.map(r => {
+    const ra = regionAgg[r];
+    return `<div class="region-item" data-region="${r}" onclick="selectRegion('${r}')">
+      <span style="display:flex;align-items:center;"><span class="region-dot" style="background:${ra.color}"></span><span class="r-name">${r}</span></span>
+      <span class="r-stat">${ra.without}M without</span>
+    </div>`;
+  }).join("");
+
+  // Global KPI cards
+  const totalWithout = Object.values(regionAgg).reduce((s,r) => s + r.without, 0);
+  const totalDeaths = Object.values(regionAgg).reduce((s,r) => s + r.hapDeaths, 0);
+  const globalPop = Object.values(regionAgg).reduce((s,r) => s + r.pop, 0);
+  const globalAccess = Math.round((globalPop - totalWithout) / globalPop * 100);
+
+  kpiGrid.innerHTML = `
+    <div class="kpi-mini"><div class="km-val">${totalWithout.toLocaleString()}M</div><div class="km-lbl">Without Access</div></div>
+    <div class="kpi-mini"><div class="km-val">${(totalDeaths/1e6).toFixed(1)}M</div><div class="km-lbl">Annual Deaths</div></div>
+    <div class="kpi-mini"><div class="km-val">${globalAccess}%</div><div class="km-lbl">Global Access</div></div>
+    <div class="kpi-mini"><div class="km-val">$8B</div><div class="km-lbl">Investment Need/yr</div></div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════
+// MAP RENDERING
+// ═══════════════════════════════════════════════════════════
+
+let svg, g, projection, path, mapData;
+let currentCountryPaths = [];
+
+function initMap() {
+  const container = document.getElementById("mapContainer");
+  const width = container.clientWidth;
+  const height = container.clientHeight;
+
+  svg = d3.select("#map")
+    .attr("width", width)
+    .attr("height", height)
+    .attr("viewBox", [0, 0, width, height]);
+
+  // Clear previous
+  svg.selectAll("*").remove();
+
+  // Projection — Natural Earth for professional cartographic look
+  projection = d3.geoNaturalEarth1()
+    .scale(Math.min(width, height) * 0.28)
+    .translate([width / 2, height / 2])
+    .precision(0.1);
+
+  path = d3.geoPath().projection(projection);
+
+  // Ocean background
+  svg.append("rect")
+    .attr("width", width)
+    .attr("height", height)
+    .attr("fill", "#060d15");
+
+  // Graticule
+  const graticule = d3.geoGraticule();
+  svg.append("path")
+    .datum(graticule)
+    .attr("fill", "none")
+    .attr("stroke", "rgba(255,255,255,0.03)")
+    .attr("stroke-width", 0.5)
+    .attr("d", path);
+
+  g = svg.append("g");
+
+  // Zoom behavior
+  const zoom = d3.zoom()
+    .scaleExtent([1, 8])
+    .translateExtent([[0,0], [width, height]])
+    .on("zoom", (event) => {
+      g.attr("transform", event.transform);
+    });
+
+  svg.call(zoom);
+
+  // Load world map
+  d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json").then(world => {
+    mapData = world;
+    const countries = topojson.feature(world, world.objects.countries);
+
+    // Add land background
+    g.append("path")
+      .datum({ type: "Sphere" })
+      .attr("fill", "#0a1420")
+      .attr("stroke", "none");
+
+    currentCountryPaths = g.selectAll("path.country")
+      .data(countries.features)
+      .join("path")
+      .attr("class", "country")
+      .attr("d", path)
+      .attr("fill", d => getFillColor(d))
+      .attr("stroke", "#1a2840")
+      .attr("stroke-width", 0.5)
+      .attr("cursor", "pointer")
+      .on("mouseover", handleMouseOver)
+      .on("mousemove", handleMouseMove)
+      .on("mouseout", handleMouseOut)
+      .on("click", handleCountryClick);
+
+    // Country borders on top
+    g.append("path")
+      .datum(topojson.mesh(world, world.objects.countries, (a, b) => a !== b))
+      .attr("fill", "none")
+      .attr("stroke", "#2a3a50")
+      .attr("stroke-width", 0.5)
+      .attr("d", path);
+
+    updateLegend();
+  });
+}
+
+function getFillColor(feature) {
+  const topoName = feature.properties.name;
+  const dataKey = getDataKey(topoName);
+  const data = dataKey ? countryData[dataKey] : null;
+  const layer = layerConfig[currentLayer];
+
+  if (!data) return "#0d1520"; // no data
+
+  if (layer.categorical) {
+    return layer.colorScale(layer.getValue(data));
+  }
+
+  const value = layer.getValue(data);
+  if (value === undefined || value === null) return "#0d1520";
+  const t = Math.max(0, Math.min(1, (value - layer.domain[0]) / (layer.domain[1] - layer.domain[0])));
+  return d3.color(layer.colorScale(t)).hex();
+}
+
+function handleMouseOver(event, d) {
+  const topoName = d.properties.name;
+  const dataKey = getDataKey(topoName);
+  const data = dataKey ? countryData[dataKey] : null;
+  const layer = layerConfig[currentLayer];
+
+  d3.select(this).attr("stroke", "#e8b430").attr("stroke-width", 1.5);
+
+  const tt = document.getElementById("mapTooltip");
+  tt.querySelector(".tt-name").textContent = topoName;
+  if (data) {
+    const val = layer.getValue(data);
+    tt.querySelector(".tt-stat").textContent = `${layer.title}: ${layer.format(val)}`;
+  } else {
+    tt.querySelector(".tt-stat").textContent = "No data available";
+  }
+  tt.style.opacity = 1;
+}
+
+function handleMouseMove(event) {
+  const tt = document.getElementById("mapTooltip");
+  tt.style.left = (event.clientX + 16) + "px";
+  tt.style.top = (event.clientY - 40) + "px";
+}
+
+function handleMouseOut(event, d) {
+  d3.select(this).attr("stroke", "#1a2840").attr("stroke-width", 0.5);
+  document.getElementById("mapTooltip").style.opacity = 0;
+}
+
+function handleCountryClick(event, d) {
+  const topoName = d.properties.name;
+  const dataKey = getDataKey(topoName);
+  if (dataKey && countryData[dataKey]) {
+    selectCountry(dataKey, topoName);
+  }
+}
+
+function updateMapColors() {
+  if (!currentCountryPaths.length) return;
+  currentCountryPaths
+    .transition().duration(400)
+    .attr("fill", d => getFillColor(d));
+  updateLegend();
+}
+
+function updateLegend() {
+  const layer = layerConfig[currentLayer];
+  document.getElementById("legTitle").textContent = layer.title;
+  const grad = document.getElementById("legGradient");
+  const labels = document.getElementById("legLabels");
+
+  if (layer.categorical) {
+    const colors = layer.domain.map(d => layer.colorScale(d));
+    grad.style.background = `linear-gradient(90deg, ${colors.join(", ")})`;
+    grad.style.display = "block";
+    labels.innerHTML = layer.domain.map((d, i) => {
+      const color = layer.colorScale(d);
+      return `<span style="display:flex;align-items:center;gap:3px;"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${color}"></span>${d}</span>`;
+    }).join("");
+  } else {
+    grad.style.background = layer.gradientCss || "transparent";
+    grad.style.display = layer.gradientCss ? "block" : "none";
+    labels.innerHTML = (layer.legendLabels || [layer.domain[0], layer.domain[1]]).map(l => `<span>${l}</span>`).join("");
+  }
+
+  // Update layer info
+  document.getElementById("layerInfoTitle").textContent = layer.title;
+  document.getElementById("layerInfoDesc").textContent = layer.description;
+}
+
+// ═══════════════════════════════════════════════════════════
+// REGION & COUNTRY SELECTION
+// ═══════════════════════════════════════════════════════════
+
+function selectRegion(regionName) {
+  activeRegion = regionName === activeRegion ? null : regionName;
+  activeCountry = null;
+
+  // Update region list
+  document.querySelectorAll(".region-item").forEach(el => {
+    el.classList.toggle("active", el.dataset.region === activeRegion);
+  });
+
+  if (!activeRegion) {
+    // Reset to world view
+    document.getElementById("detailTitle").textContent = "Select a country or region";
+    document.getElementById("detailSub").textContent = "Click on the map to explore";
+    document.getElementById("detailStats").innerHTML = '<div class="empty-state"><div class="es-icon">🗺️</div><p>Select a region or click a country</p></div>';
+    document.getElementById("detailNarrative").textContent = "";
+    document.getElementById("countryTable").querySelector("tbody").innerHTML = "";
+    updateTechChart(null);
+    return;
+  }
+
+  const ra = regionAgg[activeRegion];
+
+  // Update right panel
+  document.getElementById("detailTitle").textContent = activeRegion;
+  document.getElementById("detailSub").textContent = `${ra.without}M without access · ${ra.access}% access rate · ${ra.pop}M population`;
+
+  document.getElementById("detailStats").innerHTML = `
+    <div class="detail-stat"><div class="ds-val" style="color:${ra.color}">${ra.access}%</div><div class="ds-lbl">Access Rate</div></div>
+    <div class="detail-stat"><div class="ds-val" style="color:#e0556a">${ra.without}M</div><div class="ds-lbl">Without Access</div></div>
+    <div class="detail-stat"><div class="ds-val" style="color:#e8923f">${(ra.hapDeaths/1000).toFixed(0)}K</div><div class="ds-lbl">Annual HAP Deaths</div></div>
+    <div class="detail-stat"><div class="ds-val" style="color:var(--accent)">${ra.primaryFuel}</div><div class="ds-lbl">Dominant Fuel</div></div>
+    <div class="detail-stat"><div class="ds-val" style="color:#3db8a0">$${ra.investmentPerCap.toFixed(1)}</div><div class="ds-lbl">Investment/Capita</div></div>
+    <div class="detail-stat"><div class="ds-val" style="color:#5b9bd5">${ra.policyAvg}</div><div class="ds-lbl">Policy Status</div></div>
+  `;
+
+  document.getElementById("detailNarrative").textContent = ra.narrative;
+
+  // Region country table
+  const regionCountries = Object.entries(countryData)
+    .filter(([k, v]) => v.region === activeRegion)
+    .sort((a, b) => a[1].access - b[1].access);
+
+  document.getElementById("countryTable").querySelector("tbody").innerHTML = regionCountries.map(([name, d]) => {
+    const pct = d.access;
+    const color = pct < 20 ? "#c0392b" : pct < 50 ? "#e8923f" : pct < 80 ? "#e8b430" : "#4caf84";
+    return `<tr onclick="selectCountry('${name}', '${name}')" style="cursor:pointer">
+      <td class="ct-name">${name}</td>
+      <td><span class="ct-bar" style="width:${pct*0.8}px;background:${color}"></span>${pct}%</td>
+      <td>${d.without.toFixed(1)}M</td>
+    </tr>`;
+  }).join("");
+
+  updateTechChart(activeRegion);
+}
+
+function selectCountry(dataKey, topoName) {
+  activeCountry = dataKey;
+  activeRegion = null;
+  document.querySelectorAll(".region-item").forEach(el => el.classList.remove("active"));
+
+  const d = countryData[dataKey];
+  if (!d) return;
+
+  document.getElementById("detailTitle").textContent = topoName || dataKey;
+  document.getElementById("detailSub").textContent = `${d.region} · Pop: ${d.pop}M · Access: ${d.access}%`;
+
+  document.getElementById("detailStats").innerHTML = `
+    <div class="detail-stat"><div class="ds-val" style="color:${d.access < 20 ? '#e0556a' : d.access < 50 ? '#e8923f' : d.access < 80 ? '#e8b430' : '#4caf84'}">${d.access}%</div><div class="ds-lbl">Access Rate</div></div>
+    <div class="detail-stat"><div class="ds-val" style="color:#e0556a">${d.without.toFixed(1)}M</div><div class="ds-lbl">Without Access</div></div>
+    <div class="detail-stat"><div class="ds-val" style="color:#e8923f">${(d.hapDeaths/1000).toFixed(0)}K</div><div class="ds-lbl">Annual HAP Deaths</div></div>
+    <div class="detail-stat"><div class="ds-val" style="color:var(--accent)">${d.primaryFuel}</div><div class="ds-lbl">Dominant Fuel</div></div>
+    <div class="detail-stat"><div class="ds-val" style="color:#3db8a0">$${d.investmentPerCap.toFixed(1)}</div><div class="ds-lbl">Inv/Capita</div></div>
+    <div class="detail-stat"><div class="ds-val" style="color:#5b9bd5">${d.policyStatus}</div><div class="ds-lbl">Policy Status</div></div>
+  `;
+
+  // Country narrative
+  document.getElementById("detailNarrative").textContent = 
+    `${topoName || dataKey} has a clean cooking access rate of ${d.access}%, with ${d.without.toFixed(1)} million people relying primarily on ${d.primaryFuel.toLowerCase()} for cooking. ` +
+    `Household air pollution causes an estimated ${d.hapDeaths.toLocaleString()} deaths annually. ` +
+    `Annual clean cooking investment stands at approximately $${d.investmentPerCap.toFixed(1)} per capita, ` +
+    `with policy readiness assessed as "${d.policyStatus}".`;
+
+  // Country table: show neighbors in same region
+  const neighbors = Object.entries(countryData)
+    .filter(([k, v]) => v.region === d.region)
+    .sort((a, b) => a[1].access - b[1].access);
+
+  document.getElementById("countryTable").querySelector("tbody").innerHTML = neighbors.map(([name, nd]) => {
+    const pct = nd.access;
+    const color = pct < 20 ? "#c0392b" : pct < 50 ? "#e8923f" : pct < 80 ? "#e8b430" : "#4caf84";
+    const bold = name === dataKey ? 'font-weight:700;color:var(--accent)' : '';
+    return `<tr onclick="selectCountry('${name}', '${name}')" style="cursor:pointer">
+      <td class="ct-name" style="${bold}">${name} ${name === dataKey ? '◀' : ''}</td>
+      <td><span class="ct-bar" style="width:${pct*0.8}px;background:${color}"></span>${pct}%</td>
+      <td>${nd.without.toFixed(1)}M</td>
+    </tr>`;
+  }).join("");
+
+  updateTechChart(dataKey);
+}
+
+// ═══════════════════════════════════════════════════════════
+// TECHNOLOGY MIX CHART
+// ═══════════════════════════════════════════════════════════
+
+let techChartInstance = null;
+
+function updateTechChart(key) {
+  const canvas = document.getElementById("techChart");
+  const ctx = canvas.getContext("2d");
+
+  if (techChartInstance) {
+    techChartInstance.destroy();
+    techChartInstance = null;
+  }
+
+  let techData;
+  if (key && countryData[key]) {
+    techData = countryData[key].techMix;
+  } else if (key && regionAgg[key]) {
+    // Regional average
+    const regionCountries = Object.values(countryData).filter(d => d.region === key);
+    const n = regionCountries.length || 1;
+    techData = {
+      biomass: regionCountries.reduce((s,d) => s + (d.techMix?.biomass||0), 0) / n,
+      charcoal: regionCountries.reduce((s,d) => s + (d.techMix?.charcoal||0), 0) / n,
+      lpg: regionCountries.reduce((s,d) => s + (d.techMix?.lpg||0), 0) / n,
+      electric: regionCountries.reduce((s,d) => s + (d.techMix?.electric||0), 0) / n,
+      other: regionCountries.reduce((s,d) => s + (d.techMix?.other||0), 0) / n,
+    };
+  } else {
+    // Global average
+    const all = Object.values(countryData);
+    const n = all.length;
+    techData = {
+      biomass: all.reduce((s,d) => s + (d.techMix?.biomass||0), 0) / n,
+      charcoal: all.reduce((s,d) => s + (d.techMix?.charcoal||0), 0) / n,
+      lpg: all.reduce((s,d) => s + (d.techMix?.lpg||0), 0) / n,
+      electric: all.reduce((s,d) => s + (d.techMix?.electric||0), 0) / n,
+      other: all.reduce((s,d) => s + (d.techMix?.other||0), 0) / n,
+    };
+  }
+
+  techChartInstance = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: ["Biomass", "Charcoal", "LPG", "Electric", "Other"],
+      datasets: [{
+        data: [techData.biomass, techData.charcoal, techData.lpg, techData.electric, techData.other],
+        backgroundColor: ["#c0392b", "#e67e22", "#3db8a0", "#4caf84", "#5b9bd5"],
+        borderColor: "#0d1520",
+        borderWidth: 2,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: "60%",
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: { color: "#94a3b8", font: { size: 11 }, padding: 12, usePointStyle: true, pointStyleWidth: 8 },
+        },
+      },
+    },
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// LAYER TOGGLES
+// ═══════════════════════════════════════════════════════════
+
+document.getElementById("layerToggles").addEventListener("click", (e) => {
+  if (!e.target.classList.contains("layer-btn")) return;
+  document.querySelectorAll(".layer-btn").forEach(b => b.classList.remove("active"));
+  e.target.classList.add("active");
+  currentLayer = e.target.dataset.layer;
+  updateMapColors();
+});
+
+// ═══════════════════════════════════════════════════════════
+// RESIZE HANDLER
+// ═══════════════════════════════════════════════════════════
+
+let resizeTimeout;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(initMap, 250);
+});
+
+// ═══════════════════════════════════════════════════════════
+// KEYBOARD NAVIGATION
+// ═══════════════════════════════════════════════════════════
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    activeCountry = null;
+    activeRegion = null;
+    document.querySelectorAll(".region-item").forEach(el => el.classList.remove("active"));
+    selectRegion(null);
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// STARTUP
+// ═══════════════════════════════════════════════════════════
+
+buildLeftPanel();
+initMap();
+updateTechChart(null);
+
+// Set default right panel content
+document.getElementById("detailNarrative").textContent = 
+  "The Clean Cooking Atlas maps the global transition to clean cooking across five dimensions. " +
+  "Toggle between layers using the buttons above to explore access rates, health impacts, technology mixes, " +
+  "investment flows, and policy readiness. Click any country for detailed metrics. " +
+  "Select a region from the left panel for regional analysis and country rankings. " +
+  "Sources: WHO Global Health Observatory, IEA, SEforALL, Clean Cooking Alliance, World Bank/ESMAP, Lancet Countdown.";
+
+</script>
+</body>
+</html>
